@@ -447,27 +447,42 @@
 // }
 
 export function getPayslipHtml(payslip: PayslipData) {
-  let month_total_payable_days = 30;
-  let professional_tax = 200;
-  let gross_pay = (
-    (+payslip.total / month_total_payable_days) *
-      (payslip.payable_days || month_total_payable_days) || 0
+  let professional_tax = (+payslip.professional_tax || 0).toFixed(2);
+  let pay_per_day = (
+    (+payslip.total || 0) / (+payslip.total_days || 0)
   ).toFixed(2);
-  let gross_earnings = (+gross_pay + +payslip.reimbursement).toFixed(2);
+  let loss_of_pay = (
+    (+payslip.loss_of_pay_days || 0) * (+pay_per_day || 0)
+  ).toFixed(2);
+  let gross_pay = (
+    ((+payslip.total_days || 0) - (+payslip.loss_of_pay_days || 0)) *
+    +pay_per_day
+  ).toFixed(2);
+
+  let gross_earnings = (
+    +gross_pay +
+    (+payslip.reimbursement || 0) +
+    (+payslip.bonus || 0)
+  ).toFixed(2);
+
   let basic = (+gross_pay * 0.5).toFixed(2);
   let hra = (+gross_pay * 0.25).toFixed(2);
   let special_allowance = (+gross_pay * 0.15).toFixed(2);
   let leave_travel_allowance = (+gross_pay * 0.1).toFixed(2);
   let tds = (+payslip.tds || 0).toFixed(2);
+
   let total_deductions = (
     +tds +
     +professional_tax +
-    (+payslip?.loss_of_pay || 0)
+    (+loss_of_pay || 0) +
+    (+payslip.additional_deductions || 0)
   ).toFixed(2);
+
   let net_pay = (
     +gross_pay -
     +total_deductions +
-    +payslip.reimbursement
+    (+payslip.reimbursement || 0) +
+    (+payslip.bonus || 0)
   ).toFixed(2);
   return `
     <!DOCTYPE html>
@@ -665,7 +680,10 @@ export function getPayslipHtml(payslip: PayslipData) {
                               text-align: right;
                               display: block;
                             "
-                            >Payable Days : ${payslip.payable_days || 0}
+                            >Payable Days : ${
+                              (payslip.total_days || 0) -
+                              (payslip.loss_of_pay_days || 0)
+                            } / ${payslip.total_days || 0}
                           </strong>
                         </td>
                       </tr>
@@ -758,6 +776,18 @@ export function getPayslipHtml(payslip: PayslipData) {
                       </tr>
                       <tr>
                         <td style="padding: 5px 10px">
+                          <strong style="font-size: 13px; font-weight: normal">
+                            Bonus</strong
+                          >
+                        </td>
+                        <td style="text-align: right; padding: 5px 10px">
+                          <strong style="font-size: 13px; font-weight: normal">
+                            Rs . ${payslip.bonus || 0}</strong
+                          >
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 5px 10px">
                           <strong style="font-size: 13px"> Total Gross Pay</strong>
                         </td>
                         <td style="text-align: right; padding: 5px 10px">
@@ -781,7 +811,7 @@ export function getPayslipHtml(payslip: PayslipData) {
                           "
                         >
                           <strong style="font-size: 13px"> AMOUNT</strong>
-                        </td>
+                        </td>                        
                       </tr>
                       <tr>
                         <td style="padding: 5px 10px">
@@ -791,7 +821,7 @@ export function getPayslipHtml(payslip: PayslipData) {
                         </td>
                         <td style="text-align: right; padding: 5px 10px">
                           <strong style="font-size: 13px; font-weight: normal">
-                            Rs . 200.00</strong
+                            Rs . ${professional_tax}</strong
                           >
                         </td>
                       </tr>
@@ -819,7 +849,19 @@ export function getPayslipHtml(payslip: PayslipData) {
                         </td>
                         <td style="text-align: right; padding: 5px 10px">
                           <strong style="font-size: 13px; font-weight: normal">
-                            Rs . ${payslip?.loss_of_pay || 0}</strong
+                            Rs . ${loss_of_pay || 0}</strong
+                          >
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 5px 10px">
+                          <strong style="font-size: 13px; font-weight: normal">
+                            Additional Deductions</strong
+                          >
+                        </td>
+                        <td style="text-align: right; padding: 5px 10px">
+                          <strong style="font-size: 13px; font-weight: normal">
+                            Rs . ${payslip.additional_deductions || 0}</strong
                           >
                         </td>
                       </tr>
@@ -863,7 +905,7 @@ export function getPayslipHtml(payslip: PayslipData) {
           </table>
         </div>
 
-        <div style="width: 100%; text-align: center; border-top: 1px solid #000000; padding-top: 5px; margin-top: 120px;">
+        <div style="width: 100%; text-align: center; border-top: 1px solid #000000; padding-top: 5px; margin-top: 50px;">
           <strong
             style="
               font-family: Verdana, sans-serif;
